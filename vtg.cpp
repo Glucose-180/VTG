@@ -8,12 +8,14 @@
 
 using namespace std;
 
+string& trim(string& s);
+
 int main(int argc, char *argv[])
 {
 	string temp;
 	ifstream fin;
 	ofstream fout;
-	bool flag_out = false, flag_module = false;
+	bool flag_out = false, flag_module = false, flag_dumpfile = false;
 	bool flag_module_exist = false;
 	char* fin_name = NULL, * fout_name = NULL;
 	char* module_name = NULL;
@@ -45,6 +47,8 @@ int main(int argc, char *argv[])
 			flag_out = true;
 		else if (strcmp(*argv, "-m") == 0)
 			flag_module = true;
+		else if (strcmp(*argv, "-d") == 0)
+			flag_dumpfile = true;
 		else if (strcmp(*argv, "-h") == 0)
 			/* show help info */;
 		else
@@ -62,7 +66,7 @@ int main(int argc, char *argv[])
 		cerr << "**Error: cannot open \'" << fin_name << '\'' << endl;
 		return 1;
 	}
-	while (fin >> temp)
+	while (flag_module_exist == false && fin >> temp)
 	{
 		if (temp == "`timescale" || temp == "`define")
 		{
@@ -99,6 +103,8 @@ int main(int argc, char *argv[])
 					}
 					else
 					{
+						/* erase space in the head and tail of port_read */
+						trim(port_read);
 						ports.push_back(port_read);
 						port_read.clear();
 						if (c == ')')
@@ -130,7 +136,7 @@ int main(int argc, char *argv[])
 		return 3;
 	}
 	/* prepare for output */
-	out_str += "module " + module_name_read + "_test_g();\n";
+	out_str += "\nmodule " + module_name_read + "_test_g();\n";
 	for (i = 0; i < ports.size(); ++i)
 	{
 		if ((loc = ports.at(i).find("input")) != string::npos)
@@ -140,6 +146,7 @@ int main(int argc, char *argv[])
 		out_str += '\t' + ports.at(i) + ";\n";
 	}
 	out_str += "\n\t" + module_name_read + ' ' + module_name_read + "_test_inst(";
+	/* get the name of ports */
 	for (i = 0; i < ports.size(); ++i)
 	{
 		port_name.clear();
@@ -150,6 +157,8 @@ int main(int argc, char *argv[])
 		else
 			out_str += port_name + ");\n\n\n";
 	}
+	out_str += "\tinitial begin\n\t\t$dumpfile(\"";
+	out_str += module_name_read + ".vcd\");\n\t\t$dumpvars(0, " + module_name_read + "_test_g);\n\tend\n";
 	out_str += "endmodule";
 
 	fout.open(fout_name);
@@ -161,4 +170,21 @@ int main(int argc, char *argv[])
 	fout << out_str << endl;
 	fout.close();
 	return 0;
+}
+
+/* clear white space */
+string& trim(string& s)
+{
+	size_t i;
+
+	for (i = 0; i < s.size(); ++i)
+		if (!isspace(s.at(i)))
+			break;
+	s.erase(0, i);
+	if (!s.empty())
+		for (i = s.size() - 1; i > 0; --i)
+			if (!isspace(s.at(i)))
+				break;
+	s.erase(i + 1);
+	return s;
 }
