@@ -50,7 +50,10 @@ int main(int argc, char *argv[])
 		else if (strcmp(*argv, "-d") == 0)
 			flag_dumpfile = true;
 		else if (strcmp(*argv, "-h") == 0)
-			/* show help info */;
+		{
+			printf("Usage: vtg [input_file_name] [options]...\nOptions:\n\t-o <file>\tPlace the output into <file>\n\t-m <module>\tSelect the module; if omitted, the first module will be selected\n\t-d\t\tGenerate $dumpfile and $dumpvars\n\t-h\t\tShow help\n");/* show help info */
+			return 0;
+		}
 		else
 			fin_name = *argv;
 	}
@@ -104,8 +107,8 @@ int main(int argc, char *argv[])
 					else
 					{
 						/* erase space in the head and tail of port_read */
-						trim(port_read);
-						ports.push_back(port_read);
+						if (!trim(port_read).empty())
+							ports.push_back(port_read);
 						port_read.clear();
 						if (c == ')')
 							break;
@@ -154,11 +157,13 @@ int main(int argc, char *argv[])
 			port_name = c + port_name;
 		if (i < ports.size() - 1)
 			out_str += port_name + ", ";
-		else
-			out_str += port_name + ");\n\n\n";
 	}
-	out_str += "\tinitial begin\n\t\t$dumpfile(\"";
-	out_str += module_name_read + ".vcd\");\n\t\t$dumpvars(0, " + module_name_read + "_test_g);\n\tend\n";
+	out_str += port_name + ");\n\n\n";
+	if (flag_dumpfile == true)
+	{
+		out_str += "\tinitial begin\n\t\t$dumpfile(\"";
+		out_str += module_name_read + ".vcd\");\n\t\t$dumpvars(0, " + module_name_read + "_test_g);\n\tend\n";
+	}
 	out_str += "endmodule";
 
 	fout.open(fout_name);
@@ -177,14 +182,15 @@ string& trim(string& s)
 {
 	size_t i;
 
+	if (s.empty())
+		return s;
 	for (i = 0; i < s.size(); ++i)
 		if (!isspace(s.at(i)))
 			break;
 	s.erase(0, i);
-	if (!s.empty())
-		for (i = s.size() - 1; i > 0; --i)
-			if (!isspace(s.at(i)))
-				break;
+	for (i = s.size() - 1; i > 0; --i)
+		if (!isspace(s.at(i)))
+			break;
 	s.erase(i + 1);
 	return s;
 }
